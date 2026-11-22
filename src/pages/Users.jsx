@@ -26,6 +26,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Search, Eye, EyeOff, Shield, User } from 'lucide-react';
 import { z } from 'zod';
 
+const API_URL = (
+    import.meta.env.VITE_API_URL ||
+    'https://gym-management-system-production-9437f35f.up.railway.app'
+).replace(/\/$/, '');
+
 const userSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 chars').regex(/^[a-zA-Z\s]+$/, 'Name: letters/spaces only'),
     username: z.string().min(2, 'Username must be at least 2 chars'),
@@ -40,7 +45,6 @@ const Users = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
-    const token = localStorage.getItem('token');
 
     // Dialog & Form State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -58,17 +62,28 @@ const Users = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/users', {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/api/users`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
                 const data = await res.json();
                 setUsers(data);
             } else {
-                toast({ title: "Failed to fetch users", variant: "destructive" });
+                const errData = await res.json().catch(() => ({}));
+                toast({
+                    title: "Failed to fetch users",
+                    description: errData.message || `Status ${res.status}`,
+                    variant: "destructive"
+                });
             }
         } catch (error) {
             console.error(error);
+            toast({
+                title: "Failed to fetch users",
+                description: error.message || "Network error",
+                variant: "destructive"
+            });
         } finally {
             setLoading(false);
         }
@@ -94,13 +109,11 @@ const Users = () => {
     const validateForm = () => {
         try {
             let schema = userSchema;
-            // For creation, password is required
             if (!editingUser) {
                 schema = userSchema.extend({
                     password: z.string().min(6, 'Password must be at least 6 characters')
                 });
             } else {
-                // For editing, password is optional and empty values should be ignored
                 schema = userSchema.extend({
                     password: z.string().min(6, 'Password must be at least 6 characters').optional().or(z.literal(''))
                 });
@@ -127,18 +140,18 @@ const Users = () => {
         if (!validateForm()) return;
 
         const method = editingUser ? 'PUT' : 'POST';
-        const url = editingUser ? `/api/users/${editingUser._id}` : '/api/users';
+        const url = editingUser ? `${API_URL}/api/users/${editingUser._id}` : `${API_URL}/api/users`;
 
-        // Clean up data
         const submitData = { ...formData };
         if (editingUser && !submitData.password) {
             delete submitData.password;
         }
         if (!editingUser) {
-            submitData.status = 'active'; // Always active on initial creation as per request
+            submitData.status = 'active';
         }
 
         try {
+            const token = localStorage.getItem('token');
             const res = await fetch(url, {
                 method,
                 headers: {
@@ -147,16 +160,17 @@ const Users = () => {
                 },
                 body: JSON.stringify(submitData)
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
 
             if (res.ok) {
                 toast({
                     title: editingUser ? "User updated" : "User created",
-                    description: editingUser ? "User information has been updated successfully." : "New user has been created successfully."
+                    description: editingUser
+                        ? "User information has been updated successfully."
+                        : "New user has been created successfully."
                 });
 
-                // Check if we just updated the current logged in user
-                if (editingUser && (editingUser._id === state.user.id || editingUser._id === state.user._id)) {
+                if (editingUser && (editingUser._id === state.user?.id || editingUser._id === state.user?._id)) {
                     dispatch({
                         type: 'SET_USER',
                         payload: { ...state.user, ...data, id: data.id || data._id }
@@ -167,10 +181,19 @@ const Users = () => {
                 resetForm();
                 fetchUsers();
             } else {
-                toast({ title: "Operation failed", description: data.message, variant: "destructive" });
+                toast({
+                    title: "Operation failed",
+                    description: data.message || `Request failed (${res.status})`,
+                    variant: "destructive"
+                });
             }
         } catch (error) {
             console.error(error);
+            toast({
+                title: "Operation failed",
+                description: error.message || "Network error occurred",
+                variant: "destructive"
+            });
         }
     };
 
@@ -179,7 +202,7 @@ const Users = () => {
         setFormData({
             name: user.name,
             username: user.username,
-            password: '', // Don't show password
+            password: '',
             role: user.role,
             status: user.status || 'active'
         });
@@ -191,7 +214,8 @@ const Users = () => {
         if (!window.confirm("Are you sure you want to delete this user?")) return;
 
         try {
-            const res = await fetch(`/api/users/${id}`, {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/api/users/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -200,11 +224,20 @@ const Users = () => {
                 toast({ title: "User deleted successfully" });
                 fetchUsers();
             } else {
-                const data = await res.json();
-                toast({ title: "Failed to delete user", description: data.message || "Could not delete", variant: "destructive" });
+                const data = await res.json().catch(() => ({}));
+                toast({
+                    title: "Failed to delete user",
+                    description: data.message || "Could not delete",
+                    variant: "destructive"
+                });
             }
         } catch (error) {
             console.error(error);
+            toast({
+                title: "Failed to delete user",
+                description: error.message || "Network error",
+                variant: "destructive"
+            });
         }
     };
 
