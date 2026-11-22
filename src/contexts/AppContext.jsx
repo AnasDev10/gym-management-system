@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
+const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
 const initialState = {
     user: JSON.parse(localStorage.getItem('user')) || null,
     members: [],
@@ -22,7 +24,6 @@ const appReducer = (state, action) => {
                 localStorage.removeItem('user');
             }
             return { ...state, user: action.payload };
-        // ... existing cases ...
         case 'SET_THEME':
             return { ...state, theme: action.payload };
         case 'SET_MEMBERS':
@@ -45,14 +46,14 @@ const appReducer = (state, action) => {
             return { ...state, trainers: action.payload };
         case 'ADD_TRAINER':
             return { ...state, trainers: [...state.trainers, action.payload] };
-        case 'UPDATE_TRAINER': // Added case
+        case 'UPDATE_TRAINER':
             return {
                 ...state,
                 trainers: state.trainers.map(trainer =>
                     (trainer.id === action.payload.id || trainer._id === action.payload.id) ? action.payload : trainer
                 )
             };
-        case 'DELETE_TRAINER': // Added case
+        case 'DELETE_TRAINER':
             return {
                 ...state,
                 trainers: state.trainers.filter(trainer => trainer.id !== action.payload && trainer._id !== action.payload)
@@ -61,14 +62,14 @@ const appReducer = (state, action) => {
             return { ...state, classes: action.payload };
         case 'ADD_CLASS':
             return { ...state, classes: [...state.classes, action.payload] };
-        case 'UPDATE_CLASS': // Added case
+        case 'UPDATE_CLASS':
             return {
                 ...state,
                 classes: state.classes.map(c =>
                     (c.id === action.payload.id || c._id === action.payload.id) ? action.payload : c
                 )
             };
-        case 'DELETE_CLASS': // Added case
+        case 'DELETE_CLASS':
             return {
                 ...state,
                 classes: state.classes.filter(c => c.id !== action.payload && c._id !== action.payload)
@@ -81,14 +82,14 @@ const appReducer = (state, action) => {
             return { ...state, dashboardStats: action.payload };
         case 'ADD_PAYMENT':
             return { ...state, payments: [...state.payments, action.payload] };
-        case 'UPDATE_PAYMENT': // Added case
+        case 'UPDATE_PAYMENT':
             return {
                 ...state,
                 payments: state.payments.map(p =>
                     (p.id === action.payload.id || p._id === action.payload.id) ? action.payload : p
                 )
             };
-        case 'DELETE_PAYMENT': // Added case
+        case 'DELETE_PAYMENT':
             return {
                 ...state,
                 payments: state.payments.filter(p => p.id !== action.payload && p._id !== action.payload)
@@ -107,14 +108,12 @@ const AppContext = createContext(undefined);
 export const AppProvider = ({ children }) => {
     const [state, dispatch] = useReducer(appReducer, initialState);
 
-    // Fetch data on mount
-    // Fetch data on mount
     useEffect(() => {
         const checkAuth = async () => {
             const token = localStorage.getItem('token');
             if (token) {
                 try {
-                    const res = await fetch('/api/auth/me', {
+                    const res = await fetch(`${API_URL}/api/auth/me`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (res.ok) {
@@ -145,14 +144,13 @@ export const AppProvider = ({ children }) => {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            // Parallel fetch for all data
             const [membersRes, trainersRes, classesRes, paymentsRes, activityRes, statsRes] = await Promise.all([
-                fetch('/api/members', { headers }),
-                fetch('/api/trainers', { headers }),
-                fetch('/api/classes', { headers }),
-                fetch('/api/payments', { headers }),
-                fetch('/api/dashboard/recent', { headers }),
-                fetch('/api/dashboard/stats', { headers })
+                fetch(`${API_URL}/api/members`, { headers }),
+                fetch(`${API_URL}/api/trainers`, { headers }),
+                fetch(`${API_URL}/api/classes`, { headers }),
+                fetch(`${API_URL}/api/payments`, { headers }),
+                fetch(`${API_URL}/api/dashboard/recent`, { headers }),
+                fetch(`${API_URL}/api/dashboard/stats`, { headers })
             ]);
 
             if (membersRes.ok) {
@@ -192,7 +190,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_LOADING', payload: true });
         dispatch({ type: 'SET_ERROR', payload: null });
         try {
-            const res = await fetch('/api/auth/login', {
+            const res = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password }),
@@ -225,7 +223,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_LOADING', payload: true });
         dispatch({ type: 'SET_ERROR', payload: null });
         try {
-            const res = await fetch('/api/auth/signup', {
+            const res = await fetch(`${API_URL}/api/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, username, password }),
@@ -253,7 +251,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_ERROR', payload: null });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/classes', {
+            const res = await fetch(`${API_URL}/api/classes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -283,7 +281,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_ERROR', payload: null });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/trainers', {
+            const res = await fetch(`${API_URL}/api/trainers`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -313,7 +311,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_ERROR', payload: null });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/payments', {
+            const res = await fetch(`${API_URL}/api/payments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -343,7 +341,7 @@ export const AppProvider = ({ children }) => {
         console.log(`[AppContext] Updating payment ${id}...`, paymentData);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/payments/${id}`, {
+            const res = await fetch(`${API_URL}/api/payments/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -375,7 +373,7 @@ export const AppProvider = ({ children }) => {
         console.log(`[AppContext] Deleting payment ${id}...`);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/payments/${id}`, {
+            const res = await fetch(`${API_URL}/api/payments/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -401,7 +399,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_ERROR', payload: null });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('/api/members', {
+            const res = await fetch(`${API_URL}/api/members`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -431,7 +429,7 @@ export const AppProvider = ({ children }) => {
         console.log(`[AppContext] Updating member ${id}...`, memberData);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/members/${id}`, {
+            const res = await fetch(`${API_URL}/api/members/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -465,7 +463,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/members/${id}`, {
+            const res = await fetch(`${API_URL}/api/members/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -489,7 +487,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/trainers/${id}`, {
+            const res = await fetch(`${API_URL}/api/trainers/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -516,7 +514,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/trainers/${id}`, {
+            const res = await fetch(`${API_URL}/api/trainers/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -537,7 +535,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/classes/${id}`, {
+            const res = await fetch(`${API_URL}/api/classes/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -564,7 +562,7 @@ export const AppProvider = ({ children }) => {
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/classes/${id}`, {
+            const res = await fetch(`${API_URL}/api/classes/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -586,7 +584,6 @@ export const AppProvider = ({ children }) => {
         localStorage.setItem('theme', newTheme);
         dispatch({ type: 'SET_THEME', payload: newTheme });
 
-        // Update document class for Tailwind dark mode
         if (newTheme === 'dark') {
             document.documentElement.classList.add('dark');
         } else {
@@ -594,7 +591,6 @@ export const AppProvider = ({ children }) => {
         }
     };
 
-    // Initialize theme
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') || 'light';
         dispatch({ type: 'SET_THEME', payload: savedTheme });
